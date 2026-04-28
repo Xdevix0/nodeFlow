@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  password    String
+  createdAt   DateTime     @default(now())
+  projects    Project[]
+  deployments Deployment[]
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  repoUrl     String
+  branch      String        @default("main")
+  hostPort    Int           @unique
+  appPort     Int
+  domain      String?
+  sslEnabled  Boolean       @default(false)
+  envVars     Json?
+  status      ProjectStatus @default(STOPPED)
+  containerId String?
+  imageId     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  deployments Deployment[]
+  port        Port?
+}
+
+model Deployment {
+  id         String           @id @default(uuid())
+  projectId  String
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  status     DeploymentStatus @default(IN_PROGRESS)
+  commitSha  String?
+  log        String?
+  startedAt  DateTime         @default(now())
+  finishedAt DateTime?
+}
+
+model Port {
+  port       Int      @id
+  projectId  String   @unique
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reservedAt DateTime @default(now())
+}
+
+enum ProjectStatus {
+  RUNNING
+  STOPPED
+  BUILDING
+  ERROR
+}
+
+enum DeploymentStatus {
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}
